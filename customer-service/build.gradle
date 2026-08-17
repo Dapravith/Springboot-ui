@@ -1,0 +1,38 @@
+plugins {
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+}
+
+dependencies {
+    implementation project(':common-domain')
+    implementation project(':common-web')
+    implementation project(':common-audit')
+
+    // Servlet stack. Do not mix with WebFlux in this service.
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Spring Boot 4 splits Kafka auto-configuration into its own module. Depending on
+    // org.springframework.kafka:spring-kafka alone gives the library WITHOUT the
+    // auto-configuration, so no KafkaTemplate bean is ever created.
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
+
+    // Used directly by the event publisher, so declared directly rather than
+    // leaned on transitively. Boot 4 ships Jackson 3 (tools.jackson.*).
+    implementation 'tools.jackson.core:jackson-databind'
+
+    // Schema is owned by migrations; Hibernate only validates against it.
+    implementation 'org.flywaydb:flyway-core'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation libs.archunit.junit5
+    testImplementation testFixtures(project(':common-audit'))
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// NOTE: the BootUI runtimeOnly dependency is contributed by the root build script
+// when, and only when, the build is invoked with -Pdev.

@@ -1,0 +1,70 @@
+server:
+  port: 8081
+  # Let in-flight requests finish before the JVM exits during a rolling restart.
+  shutdown: graceful
+
+spring:
+  application:
+    name: customer-service
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:55432/customer_db}
+    username: ${DB_USERNAME:dev_user}
+    password: ${DB_PASSWORD:dev_password}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX:10}
+      minimum-idle: ${DB_POOL_MIN:2}
+      connection-timeout: 10000
+      validation-timeout: 5000
+      max-lifetime: 1800000
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+  jpa:
+    hibernate:
+      # Flyway owns the schema. `validate` turns any drift into a startup failure
+      # instead of an unnoticed ALTER against a live database.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:59092}
+    producer:
+      acks: all
+      retries: 3
+      properties:
+        delivery.timeout.ms: 15000
+        request.timeout.ms: 5000
+
+customer:
+  kafka:
+    enabled: ${CUSTOMER_KAFKA_ENABLED:true}
+    customer-registered-topic: customer-registered-topic
+
+audit:
+  # The audit trail is on by default. Turning it off is a deliberate, visible act.
+  enabled: ${AUDIT_ENABLED:true}
+  # Header carrying the acting user. UNVERIFIED until Spring Security is added -
+  # see docs/audit-logging.md before treating this value as identity.
+  actor-header: ${AUDIT_ACTOR_HEADER:X-Actor-Id}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never

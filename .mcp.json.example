@@ -1,0 +1,35 @@
+{
+  "_comment": [
+    "Copy to .mcp.json to let Claude Code inspect running services. .mcp.json is gitignored.",
+    "Each microservice exposes its OWN MCP endpoint on its own loopback port - there is no",
+    "aggregated endpoint. Only list the services you are actively debugging.",
+    "",
+    "Each service must ALSO be started with MCP switched on, which is OFF by default:",
+    "  ./gradlew :services:customer-service:bootRun -Pdev --args='--bootui.mcp.enabled=ON'",
+    "",
+    "Addresses are 127.0.0.1 on purpose. Never point this at a shared or remote host,",
+    "and never add an authentication token to this file - loopback needs none."
+  ],
+  "servers": {
+    "bootui-api-gateway": {
+      "type": "http",
+      "url": "http://127.0.0.1:8080/bootui/api/mcp"
+    },
+    "bootui-customer-service": {
+      "type": "http",
+      "url": "http://127.0.0.1:8081/bootui/api/mcp"
+    },
+    "bootui-account-service": {
+      "type": "http",
+      "url": "http://127.0.0.1:8082/bootui/api/mcp"
+    },
+    "bootui-transfer-service": {
+      "type": "http",
+      "url": "http://127.0.0.1:8083/bootui/api/mcp"
+    },
+    "bootui-notification-service": {
+      "type": "http",
+      "url": "http://127.0.0.1:8084/bootui/api/mcp"
+    }
+  }
+}

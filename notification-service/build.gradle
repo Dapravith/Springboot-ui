@@ -1,0 +1,21 @@
+plugins {
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+}
+
+dependencies {
+    implementation project(':common-domain')
+    implementation project(':common-web')
+    implementation project(':common-audit')
+
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // See customer-service: Boot 4 requires the starter for Kafka auto-configuration.
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation libs.archunit.junit5
+    testImplementation testFixtures(project(':common-audit'))
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

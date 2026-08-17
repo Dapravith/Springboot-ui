@@ -1,0 +1,95 @@
+plugins {
+    id 'java'
+    alias(libs.plugins.spring.boot) apply false
+    alias(libs.plugins.spring.dependency.management) apply false
+}
+
+// Resolved here, in the root script scope, where the `libs` catalog accessor exists.
+def bootuiCoordinates = libs.bootui.spring.boot.starter.get().toString()
+
+// A single switch for the whole build: `-Pdev` opts the developer runtime in.
+// Without it, BootUI is not on any classpath and cannot end up in a production artifact.
+def developerMode = providers.gradleProperty('dev').present
+
+allprojects {
+    group = 'com.springboot'
+    version = '0.0.1-SNAPSHOT'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+
+    java {
+        toolchain {
+            // Pinned to the toolchain rather than the developer's JAVA_HOME.
+            languageVersion = JavaLanguageVersion.of(25)
+        }
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        testLogging {
+            events 'failed'
+            exceptionFormat = 'full'
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        // -parameters keeps constructor parameter names for Spring binding and
+        // for Jackson record deserialisation.
+        options.compilerArgs << '-parameters'
+    }
+
+    // ---------------------------------------------------------------------
+    // BootUI: developer diagnostics console.
+    //
+    // `plugins.withId('org.springframework.boot')` is the isolation mechanism.
+    // It fires only for modules that apply the Spring Boot plugin - that is,
+    // runnable applications. The shared-kernel modules (common-domain,
+    // common-web, common-audit) do not apply it and never receive BootUI, without each
+    // module having to opt out by hand.
+    // ---------------------------------------------------------------------
+    plugins.withId('org.springframework.boot') {
+        // Run every service from the repository root rather than its own module
+        // directory. Without this each service would write logs/ beside its own
+        // build file, and there would be no single place to tail the audit trail
+        // of the whole system from.
+        tasks.named('bootRun') {
+            workingDir = rootProject.projectDir
+        }
+
+        if (developerMode) {
+            dependencies {
+                // runtimeOnly: BootUI is never visible to application source code,
+                // so no business class can compile against it by accident.
+                runtimeOnly bootuiCoordinates
+            }
+
+            // `./gradlew bootRun -Pdev` both attaches BootUI and activates the dev profile.
+            tasks.named('bootRun') {
+                systemProperty 'spring.profiles.active', 'dev'
+            }
+        }
+    }
+}
+
+// Convenience reporting task: states plainly whether this invocation is a
+// developer build or a production build.
+tasks.register('bootuiStatus') {
+    group = 'help'
+    description = 'Reports whether BootUI is attached to this build invocation.'
+    def mode = developerMode
+    def coordinates = bootuiCoordinates
+    doLast {
+        if (mode) {
+            println "BootUI: ATTACHED (developer build, -Pdev) -> ${coordinates}"
+        } else {
+            println 'BootUI: ABSENT (production build). Re-run with -Pdev to attach it.'
+        }
+    }
+}

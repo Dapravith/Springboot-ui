@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logging for this service.
+
+  The audit appender is included from common-audit rather than defined here, so
+  every service writes the same file naming, rotation and retention into one
+  shared directory. That is what lets scripts/tail-audit.py follow the whole
+  system at once.
+-->
+<configuration>
+
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+
+    <include resource="com/springboot/common/audit/audit-appender.xml"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>

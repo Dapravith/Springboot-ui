@@ -1,0 +1,34 @@
+// Shared web edge: the API envelope and the centralized exception handler that
+// every service reuses, so error responses are identical across the system.
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api platform(libs.spring.boot.dependencies)
+    api project(':common-domain')
+
+    // These are `api`, not `compileOnly`, on purpose.
+    //
+    // GlobalExceptionHandler references these types in its method signatures, so
+    // Spring loads all of them the moment it introspects the bean. Declaring them
+    // compileOnly made the runtime contract implicit: a consuming service that
+    // happened not to pull in jakarta.validation failed at startup with a
+    // NoClassDefFoundError rather than at compile time. A library must declare
+    // what it actually needs to run.
+    api 'org.springframework:spring-web'
+    api 'org.springframework:spring-webmvc'
+    api 'org.springframework:spring-context'
+    api 'jakarta.validation:jakarta.validation-api'
+    api 'org.slf4j:slf4j-api'
+
+    // The servlet API is different: it is always supplied at runtime by the
+    // embedded container (tomcat-embed-core), and this module is servlet-MVC
+    // only, so it is compileOnly here rather than shipped. Tests need it on the
+    // classpath because there is no container.
+    compileOnly 'jakarta.servlet:jakarta.servlet-api'
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

@@ -1,0 +1,59 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: api-gateway
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+  http:
+    client:
+      # The gateway must not outlive its slowest upstream.
+      connect-timeout: 2s
+      read-timeout: 10s
+
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            # Business API routes only.
+            #
+            # There is deliberately NO route for /bootui/**. BootUI belongs to each
+            # service's own runtime and is reached directly on that service's
+            # localhost port. Proxying it through the gateway would put a developer
+            # console behind the system's public entry point.
+            - id: customer-service
+              uri: ${CUSTOMER_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/customers/**
+            - id: account-service
+              uri: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/accounts/**
+            - id: transfer-service
+              uri: ${TRANSFER_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/transfers/**
+            - id: notification-service
+              uri: ${NOTIFICATION_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/v1/notifications/**
+
+audit:
+  # The audit trail is on by default. Turning it off is a deliberate, visible act.
+  enabled: ${AUDIT_ENABLED:true}
+  # Header carrying the acting user. UNVERIFIED until Spring Security is added -
+  # see docs/audit-logging.md before treating this value as identity.
+  actor-header: ${AUDIT_ACTOR_HEADER:X-Actor-Id}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never

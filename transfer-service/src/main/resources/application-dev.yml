@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------------------
+# Developer-only configuration for transfer-service.
+#
+# Loaded ONLY when the 'dev' profile is active. Running
+# ./gradlew :transfer-service:bootRun -Pdev sets that profile automatically.
+#
+# Each service owns its own BootUI configuration (no shared module, no shared
+# profile) so that changing one service's diagnostics cannot affect another.
+# ---------------------------------------------------------------------------
+bootui:
+  # AUTO activates BootUI only for the profiles named in enabled-profiles.
+  # Combined with -Pdev (which omits the dependency entirely otherwise), this
+  # gives two independent barriers against BootUI reaching production.
+  enabled: AUTO
+  enabled-profiles: dev,local
+
+  path: /bootui
+
+  # Fail-safe defaults, stated explicitly rather than inherited, so that a
+  # future change to BootUI's own defaults cannot silently widen access here.
+  allow-non-localhost: false   # loopback only (matches BootUI's default)
+  mask-secrets: true           # redact secret-like values (matches default)
+  read-only: true              # deliberate: BootUI's own default is false
+
+  # Docker development: trust the auto-detected container gateway rather than
+  # opening BootUI to every network interface with allow-non-localhost.
+  trust-container-gateway: AUTO
+
+  mcp:
+    # Opt-in only. Switch to ON for one service, temporarily, when actively
+    # driving Claude Code against it. See docs/bootui-development.md.
+    enabled: OFF
+
+logging:
+  level:
+    com.springboot: DEBUG

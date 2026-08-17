@@ -1,0 +1,16 @@
+# ---------------------------------------------------------------------------
+# Production profile for account-service.
+#
+# In a correctly built production artifact the BootUI dependency is absent
+# entirely (it is added only by ./gradlew ... -Pdev), so this setting is a
+# defence-in-depth backstop: it disables BootUI even if a developer build were
+# ever promoted to production by mistake. Unknown properties are ignored by
+# Spring when the starter is not on the classpath, so this is safe either way.
+#
+# Real production datasource, Kafka and Redis settings are supplied by the
+# platform through environment variables and secrets (12-factor), never here.
+# ---------------------------------------------------------------------------
+bootui:
+  enabled: OFF
+  mcp:
+    enabled: OFF

@@ -1,0 +1,42 @@
+server:
+  port: 8084
+  shutdown: graceful
+
+spring:
+  application:
+    name: notification-service
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:59092}
+    consumer:
+      auto-offset-reset: earliest
+      # Explicit so a slow batch cannot silently trigger a rebalance storm.
+      max-poll-records: 100
+      properties:
+        max.poll.interval.ms: 300000
+
+notification:
+  kafka:
+    enabled: ${NOTIFICATION_KAFKA_ENABLED:true}
+    topics: customer-registered-topic,account-opened-topic
+    group-id: notification-service-group
+  store:
+    # Bounded on purpose: this service consumes an unbounded stream.
+    max-entries: ${NOTIFICATION_STORE_MAX:200}
+
+audit:
+  # The audit trail is on by default. Turning it off is a deliberate, visible act.
+  enabled: ${AUDIT_ENABLED:true}
+  # Header carrying the acting user. UNVERIFIED until Spring Security is added -
+  # see docs/audit-logging.md before treating this value as identity.
+  actor-header: ${AUDIT_ACTOR_HEADER:X-Actor-Id}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never

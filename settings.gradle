@@ -1,0 +1,22 @@
+rootProject.name = 'banking-microservices'
+
+// ---------------------------------------------------------------------------
+// Shared kernel. Small, stable, and dependency-ordered:
+//   common-domain -> no dependencies at all (pure Java)
+//   common-web    -> depends on common-domain
+//   common-audit  -> depends on common-domain
+// None of them is a runnable application, so none ever receives BootUI.
+// ---------------------------------------------------------------------------
+include 'common-domain'
+include 'common-web'
+include 'common-audit'
+
+// ---------------------------------------------------------------------------
+// Runnable Spring Boot applications, one directory per deployable unit.
+// Each owns its own runtime, its own database, and its own BootUI console.
+// ---------------------------------------------------------------------------
+include 'api-gateway'
+include 'customer-service'
+include 'account-service'
+include 'transfer-service'
+include 'notification-service'

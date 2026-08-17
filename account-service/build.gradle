@@ -1,0 +1,30 @@
+plugins {
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+}
+
+dependencies {
+    implementation project(':common-domain')
+    implementation project(':common-web')
+    implementation project(':common-audit')
+
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // See customer-service: Boot 4 requires the starter for Kafka auto-configuration.
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
+    implementation 'tools.jackson.core:jackson-databind'
+
+    // Schema is owned by migrations; Hibernate only validates against it.
+    implementation 'org.flywaydb:flyway-core'
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation libs.archunit.junit5
+    testImplementation testFixtures(project(':common-audit'))
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

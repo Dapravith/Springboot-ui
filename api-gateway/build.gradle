@@ -1,0 +1,21 @@
+plugins {
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
+}
+
+dependencyManagement {
+    imports {
+        mavenBom libs.spring.cloud.dependencies.get().toString()
+    }
+}
+
+dependencies {
+    implementation project(':common-audit')
+    // Servlet (WebMVC) gateway, deliberately chosen over the reactive gateway so the
+    // whole system stays on one stack and every service uses the same BootUI starter.
+    implementation 'org.springframework.cloud:spring-cloud-starter-gateway-server-webmvc'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

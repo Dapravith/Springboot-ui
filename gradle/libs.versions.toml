@@ -1,0 +1,18 @@
+[versions]
+springBoot = "4.1.0"
+springDependencyManagement = "1.1.7"
+springCloud = "2025.1.2"
+# Developer diagnostics console. Development-only: see the `-Pdev` guard in build.gradle.
+bootui = "1.13.1"
+# Enforces the Clean Architecture dependency rule as a normal unit test.
+archunit = "1.4.1"
+
+[libraries]
+spring-boot-dependencies = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "springBoot" }
+spring-cloud-dependencies = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "springCloud" }
+bootui-spring-boot-starter = { module = "com.julien-dubois.bootui:bootui-spring-boot-starter", version.ref = "bootui" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "springBoot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "springDependencyManagement" }

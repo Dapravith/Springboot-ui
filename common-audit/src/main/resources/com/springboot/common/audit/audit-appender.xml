@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Shared audit appender, included by every service's logback-spring.xml.
+
+  Defined once here rather than copied into each service so the audit file
+  naming, rotation and retention cannot drift apart between services - which
+  would break the unified tail and, more importantly, the retention guarantee.
+
+  AUDIT_LOG_DIR defaults to ./logs. Every service writes into the SAME directory
+  with a per-service file name, which is what makes `scripts/tail-audit.py`
+  able to follow the whole system at once.
+-->
+<included>
+
+    <property name="AUDIT_LOG_DIR" value="${AUDIT_LOG_DIR:-./logs}"/>
+    <springProperty scope="context" name="auditServiceName" source="spring.application.name"
+                    defaultValue="unknown-service"/>
+
+    <appender name="AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${AUDIT_LOG_DIR}/audit-${auditServiceName}.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${AUDIT_LOG_DIR}/archive/audit-${auditServiceName}.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <!-- Retention is a compliance decision, not a disk-space one. Raise
+                 maxHistory before assuming 30 days is enough for your regulator. -->
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+
+        <encoder>
+            <!-- The message is already a complete JSON object. Adding a timestamp
+                 or level prefix here would break JSONL parsing, so the pattern is
+                 deliberately just the message. -->
+            <pattern>%msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!--
+      additivity="false" keeps audit entries out of the console and the ordinary
+      application log. The trail is a separate artifact with a separate retention
+      policy; interleaving it with debug output makes both harder to use.
+    -->
+    <logger name="AUDIT" level="INFO" additivity="false">
+        <appender-ref ref="AUDIT_FILE"/>
+    </logger>
+
+</included>

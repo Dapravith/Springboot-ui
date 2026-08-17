@@ -1,0 +1,39 @@
+server:
+  port: 8083
+  shutdown: graceful
+
+spring:
+  application:
+    name: transfer-service
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+  http:
+    client:
+      # Applies to the auto-configured RestClient.Builder used to reach the ledger.
+      # Without these, a stalled ledger would pin threads here indefinitely.
+      connect-timeout: 2s
+      read-timeout: 5s
+
+transfer:
+  account-service:
+    base-url: ${ACCOUNT_SERVICE_URL:http://localhost:8082}
+  limits:
+    single-transfer-max: ${TRANSFER_SINGLE_MAX:10000.00}
+    currency: ${TRANSFER_CURRENCY:USD}
+
+audit:
+  # The audit trail is on by default. Turning it off is a deliberate, visible act.
+  enabled: ${AUDIT_ENABLED:true}
+  # Header carrying the acting user. UNVERIFIED until Spring Security is added -
+  # see docs/audit-logging.md before treating this value as identity.
+  actor-header: ${AUDIT_ACTOR_HEADER:X-Actor-Id}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never

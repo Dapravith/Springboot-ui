@@ -1,0 +1,107 @@
+# Development overlay: runs the services themselves in containers.
+#
+#   ./gradlew bootJar -Pdev
+#   docker compose -f compose.yml -f compose.dev.yml up --build
+#
+# Nothing in this file may be reused for production. It exists to make BootUI
+# work for containerised local development, and it does so without opening
+# BootUI to the network:
+#
+#   * every service port is bound to 127.0.0.1, so the consoles are reachable
+#     from this machine only;
+#   * BOOTUI_TRUST_CONTAINER_GATEWAY=AUTO lets BootUI recognise the Docker
+#     bridge gateway as local, instead of using allow-non-localhost, which
+#     would disable the source-address check outright.
+name: banking-microservices
+
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        JAR_FILE: api-gateway/build/libs/api-gateway-0.0.1-SNAPSHOT.jar
+        SERVICE_PORT: 8080
+    container_name: banking-api-gateway
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment: &bootui_dev_env
+      SPRING_PROFILES_ACTIVE: dev
+      BOOTUI_TRUST_CONTAINER_GATEWAY: AUTO
+    depends_on:
+      - customer-service
+      - account-service
+      - transfer-service
+      - notification-service
+
+  customer-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        JAR_FILE: customer-service/build/libs/customer-service-0.0.1-SNAPSHOT.jar
+        SERVICE_PORT: 8081
+    container_name: banking-customer-service
+    ports:
+      - "127.0.0.1:8081:8081"
+    environment:
+      <<: *bootui_dev_env
+      DB_URL: jdbc:postgresql://postgres:5432/customer_db
+      DB_USERNAME: dev_user
+      DB_PASSWORD: dev_password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  account-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        JAR_FILE: account-service/build/libs/account-service-0.0.1-SNAPSHOT.jar
+        SERVICE_PORT: 8082
+    container_name: banking-account-service
+    ports:
+      - "127.0.0.1:8082:8082"
+    environment:
+      <<: *bootui_dev_env
+      DB_URL: jdbc:postgresql://postgres:5432/account_db
+      DB_USERNAME: dev_user
+      DB_PASSWORD: dev_password
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  transfer-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        JAR_FILE: transfer-service/build/libs/transfer-service-0.0.1-SNAPSHOT.jar
+        SERVICE_PORT: 8083
+    container_name: banking-transfer-service
+    ports:
+      - "127.0.0.1:8083:8083"
+    environment:
+      <<: *bootui_dev_env
+      ACCOUNT_SERVICE_URL: http://account-service:8082
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        JAR_FILE: notification-service/build/libs/notification-service-0.0.1-SNAPSHOT.jar
+        SERVICE_PORT: 8084
+    container_name: banking-notification-service
+    ports:
+      - "127.0.0.1:8084:8084"
+    environment:
+      <<: *bootui_dev_env
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092

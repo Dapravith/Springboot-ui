@@ -1,0 +1,14 @@
+// Shared domain kernel: the innermost layer of the whole system.
+//
+// This module has ZERO production dependencies - no Spring, no Jakarta, no
+// Jackson. That is enforced by simply not declaring any. It is what makes the
+// dependency rule checkable at a glance: nothing here can reach outward.
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    testImplementation platform("org.junit:junit-bom:5.11.4")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}

@@ -1,0 +1,38 @@
+// Audit trail: a cross-cutting concern shared by every service.
+//
+// Kept separate from common-web because an audit event is emitted by the
+// application layer when something meaningful happens, not by the web layer
+// when a request arrives. The two have different lifecycles and different
+// reasons to change.
+plugins {
+    id 'java-library'
+    // Publishes a recording AuditLogger so every service can assert on the trail
+    // without each one hand-rolling the same fake.
+    id 'java-test-fixtures'
+}
+
+dependencies {
+    api platform(libs.spring.boot.dependencies)
+    api project(':common-domain')
+
+    // Required at runtime: the logger writes structured JSON through SLF4J.
+    api 'org.slf4j:slf4j-api'
+    api 'tools.jackson.core:jackson-databind'
+
+    // Supplied by the consuming Spring Boot application, exactly as in common-web.
+    compileOnly 'org.springframework:spring-context'
+    compileOnly 'org.springframework:spring-web'
+    compileOnly 'jakarta.servlet:jakarta.servlet-api'
+    compileOnly 'org.springframework:spring-tx'
+
+    testImplementation 'org.springframework:spring-context'
+    testImplementation 'org.springframework:spring-web'
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
+    testImplementation 'org.springframework:spring-tx'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Captures emitted log events so the JSON contract can be asserted.
+    testImplementation 'ch.qos.logback:logback-classic'
+
+    testFixturesApi project(':common-audit')
+}
