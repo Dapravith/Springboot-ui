@@ -46,6 +46,26 @@ subprojects {
     }
 
     // ---------------------------------------------------------------------
+    // CVE remediation.
+    //
+    // Spring Boot 4.1.0 manages versions that OSV.dev reports as vulnerable.
+    // These pin the fixed releases until a Boot upgrade carries them. Each line
+    // holds a version FORWARD today, but would hold it BACK once Boot catches
+    // up - delete a line as soon as the managed version reaches its target.
+    // ---------------------------------------------------------------------
+    ext['jackson-bom.version'] = '3.1.5'         // CVE-2026-59889 (was 3.1.4)
+    ext['log4j2.version'] = '2.25.5'             // CVE-2026-49844 (was 2.25.4)
+    ext['netty.version'] = '4.2.16.Final'        // CVE-2026-73508 (was 4.2.15.Final)
+
+    dependencies {
+        constraints {
+            // Not managed by the Boot BOM; reaches the services transitively
+            // through kafka-clients, so it needs an explicit constraint.
+            implementation 'at.yawk.lz4:lz4-java:1.11.1'  // CVE-2026-59949 (was 1.10.1)
+        }
+    }
+
+    // ---------------------------------------------------------------------
     // BootUI: developer diagnostics console.
     //
     // `plugins.withId('org.springframework.boot')` is the isolation mechanism.
@@ -68,6 +88,10 @@ subprojects {
                 // runtimeOnly: BootUI is never visible to application source code,
                 // so no business class can compile against it by accident.
                 runtimeOnly bootuiCoordinates
+
+                // Workarounds for BootUI's own bugs, attached the same way and on
+                // the same condition, so they share BootUI's production isolation.
+                runtimeOnly project(':common-bootui-dev')
             }
 
             // `./gradlew bootRun -Pdev` both attaches BootUI and activates the dev profile.

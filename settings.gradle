@@ -12,6 +12,14 @@ include 'common-web'
 include 'common-audit'
 
 // ---------------------------------------------------------------------------
+// Developer-only. Attached runtimeOnly alongside BootUI itself, and only under
+// -Pdev, so it is absent from every production artifact. Holds workarounds for
+// BootUI bugs; see docs/bootui-development.md. Never depend on it from service
+// code - it is not part of the shared kernel above.
+// ---------------------------------------------------------------------------
+include 'common-bootui-dev'
+
+// ---------------------------------------------------------------------------
 // Runnable Spring Boot applications, one directory per deployable unit.
 // Each owns its own runtime, its own database, and its own BootUI console.
 // ---------------------------------------------------------------------------
