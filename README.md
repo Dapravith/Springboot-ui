@@ -416,14 +416,14 @@ only the scans. It is a per-run override — never commit `read-only: false`.
 
 ### Panels
 
-The sidebar groups panels into **Advisors** (rule-based scans you trigger) and
-**Runtime** (live views of the process). The counts beside each group reflect
-what the running process actually exposes, so a service's console lists only the
-panels that apply to it.
+The sidebar opens with Overview, Live Activity, and GitHub, then groups the rest:
+**Advisors** (rule-based scans you trigger), **Runtime** (live views of the
+process), followed by Configuration, Services, Diagnostics, Developer Tools, and
+a Disabled / Unavailable group for panels this process cannot serve. The count
+beside each group is computed from the running process, so a service's console
+lists only the panels that apply to it.
 
-![The BootUI Pentesting advisor on api-gateway: the Advisors and Runtime sidebar
-groups on the left, and the advisor score, scan status, scope, severity
-breakdown, and findings on the right](docs/images/bootui-pentesting.png)
+![BootUI Pentesting advisor on api-gateway, showing the sidebar groups, advisor score, scan status, scope, severity breakdown, and findings](docs/images/bootui-pentesting.png)
 
 *The Pentesting advisor on `api-gateway`. Every advisor follows this layout: a
 score, the scan status and scope, a severity breakdown, then the findings with a
@@ -443,15 +443,13 @@ Advisors:
 <details>
 <summary>Architecture and REST API panels on <code>api-gateway</code></summary>
 
-![The BootUI Architecture advisor: 41 rules evaluated, 0 violations, 3 classes
-analysed in base package com.springboot.gateway](docs/images/bootui-architecture.png)
+![BootUI Architecture advisor: 41 rules evaluated, 0 violations, 3 classes analysed in base package com.springboot.gateway](docs/images/bootui-architecture.png)
 
 *Architecture — 41 rules evaluated against the gateway's own classes, no
 violations. The panel states that these heuristics complement rather than
 replace a project-specific ArchUnit suite.*
 
-![The BootUI REST API advisor: 0 rules evaluated and 0 controllers analysed on
-the gateway](docs/images/bootui-rest-api.png)
+![BootUI REST API advisor: 0 rules evaluated and 0 controllers analysed on the gateway](docs/images/bootui-rest-api.png)
 
 *REST API — the gateway declares no controllers, so no rules are evaluated. On
 `customer-service` or `account-service` this panel has controllers to analyse.*
@@ -475,9 +473,7 @@ reports how many scanners it could include (for example "6 of 7 scanners
 scored"); a scanner that failed to return a severity summary is excluded rather
 than counted as zero.
 
-![The BootUI Overview page: an overall score of 96 out of 100, per-scanner
-contributions, and a card per advisor showing its score and severity
-counts](docs/images/bootui-overview.png)
+![BootUI Overview page: overall score 96 out of 100, per-scanner contributions, and a card per advisor showing its score and severity counts](docs/images/bootui-overview.png)
 
 *Overview on `api-gateway`. The Vulnerabilities card here shows the failure mode
 described in [Troubleshooting](#overview-reports-unable-to-run-vulnerabilities):
@@ -498,16 +494,12 @@ Findings this project currently reports:
   chain. See [Security status](#security-status): this project has no
   authentication layer, so these findings are expected until one is added.
 
-![The BootUI Spring advisor: 41 rules evaluated across 571 beans, with the
-SPRING-CONFIG-003 and SPRING-WIRING-009 violations
-expanded](docs/images/bootui-spring.png)
+![BootUI Spring advisor: 41 rules evaluated across 571 beans, with the SPRING-CONFIG-003 and SPRING-WIRING-009 violations expanded](docs/images/bootui-spring.png)
 
 *Spring — each violation carries a rule id, a category, sample details, and a
 recommendation, and can be dismissed for the session.*
 
-![The BootUI Memory advisor: a runtime snapshot of heap, threads, loaded classes
-and deadlock state, with the MEM-FOOTPRINT-004 and MEM-GC-005
-findings](docs/images/bootui-memory.png)
+![BootUI Memory advisor: runtime snapshot of heap, threads, loaded classes and deadlock state, with the MEM-FOOTPRINT-004 and MEM-GC-005 findings](docs/images/bootui-memory.png)
 
 *Memory — the runtime snapshot on the right is read live from the management
 beans, so it reflects the machine as well as the JVM.*
@@ -521,9 +513,7 @@ above a filterable event stream of requests, SQL statements, and exceptions.
 Auto-refresh can be paused, and events can be filtered by path, status, type, or
 severity.
 
-![The BootUI Live Activity panel: metric tiles for requests per minute, error
-rate, latency, SQL per minute and heap, above a time-ordered event table of
-requests and exceptions](docs/images/bootui-live-activity.png)
+![BootUI Live Activity panel: metric tiles for requests per minute, error rate, latency, SQL per minute and heap, above a time-ordered event table of requests and exceptions](docs/images/bootui-live-activity.png)
 
 *Live Activity. The expanded row shows an exception with its stack frame and an
 occurrence count, tied to the request that produced it.*
@@ -541,9 +531,7 @@ it inventoried 27 runtime dependencies and flagged two MEDIUM advisories
 (`log4j-api` and `jackson-databind`) — re-run the scan rather than trusting that
 snapshot.
 
-![The BootUI Vulnerabilities panel: scan status, dependency and vulnerable
-counts, a severity breakdown, and the runtime JAR table with advisories and
-fixed versions](docs/images/bootui-vulnerabilities.png)
+![BootUI Vulnerabilities panel: scan status, dependency and vulnerable counts, a severity breakdown, and the runtime JAR table with advisories and fixed versions](docs/images/bootui-vulnerabilities.png)
 
 *Vulnerabilities. Each row links the advisory and shows the versions that fix
 it; the table can be filtered to vulnerable dependencies only.*
@@ -563,9 +551,7 @@ token's scopes or the repository plan do not cover render as `Unavailable`
 rather than failing the page — code scanning on a repository without it returns
 HTTP 404, for example.
 
-![The BootUI GitHub panel: repository identity and credential status, with cards
-for open pull requests, issues, workflow failures, API quota, and the scanning
-alert types](docs/images/bootui-github.png)
+![BootUI GitHub panel: repository identity and credential status, with cards for open pull requests, issues, workflow failures, API quota, and the scanning alert types](docs/images/bootui-github.png)
 
 *GitHub. The credential card confirms which token source was used and the scopes
 it carries, which is what determines whether the cards below can populate.*
