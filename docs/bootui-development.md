@@ -298,6 +298,37 @@ Advisor output is a set of **review prompts, not verdicts** — BootUI says so
 itself in every scan payload. Verify each finding against the code before acting
 on it, and never apply a suggested Hibernate or schema change blindly.
 
+### Known upstream bug: the Vulnerabilities card on Overview
+
+BootUI 1.13.1 disagrees with itself. Its scan endpoint reports a severity bucket
+named `UNKNOWN`, but the validator behind the Overview page's scanner cards
+(`scannerScore-*.js`) accepts only `CRITICAL`, `HIGH`, `MEDIUM`, `LOW` and
+`INFO`. The card therefore fails with
+
+```
+Scanner returned an invalid severity summary
+```
+
+even though the scan itself succeeded. No BootUI property configures the severity
+vocabulary, and 1.13.1 is the latest release. The dedicated **Vulnerabilities**
+page is unaffected — it maps the full vocabulary and has no such guard.
+
+The `common-bootui-dev` module works around it. `VulnerabilityScanSeverityFilter`
+drops the `UNKNOWN` bucket from that one endpoint's response **only when its count
+is zero**. That condition is the whole point: BootUI scores `INFO` at zero weight,
+so relabelling a populated `UNKNOWN` bucket would make a real finding look
+harmless. Removing an empty bucket hides nothing, and a genuine unknown-severity
+vulnerability still breaks the card — which is the correct failure for a security
+panel. Every error path returns the original bytes untouched.
+
+The module is attached `runtimeOnly` under `-Pdev`, exactly like BootUI itself, so
+it is absent from production artifacts. Unlike `AuditConfig` it auto-configures
+rather than being `@Import`ed, because a service cannot name a class that its own
+production build does not contain.
+
+**Delete `common-bootui-dev` once BootUI ships a fix**, along with its entries in
+`settings.gradle` and the `developerMode` block in `build.gradle`.
+
 ## Security considerations
 
 - **Loopback only.** `allow-non-localhost: false`. A request from the machine's

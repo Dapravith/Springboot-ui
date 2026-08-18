@@ -11,6 +11,9 @@ logs/
 # Local Claude Code state: machine-specific permissions and scratch worktrees.
 .claude/
 
+# BootUI developer-local state (dismissed advisor rules); safe to delete.
+.bootui/
+
 # Local MCP wiring may reference machine-specific ports/paths.
 # Commit .mcp.json.example instead.
 .mcp.json

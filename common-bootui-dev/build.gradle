@@ -1,0 +1,35 @@
+// Developer-only workaround module. See docs/bootui-development.md.
+//
+// This module is attached with `runtimeOnly` by the root build script, and only
+// when the build is invoked with -Pdev - exactly how BootUI itself is attached.
+// It is therefore absent from every production artifact.
+//
+// It deliberately does NOT apply the Spring Boot plugin: that plugin is what
+// marks a module as a runnable application in this build, and applying it here
+// would make the root script treat this module as a service.
+plugins {
+    id 'java-library'
+}
+
+dependencies {
+    api platform(libs.spring.boot.dependencies)
+
+    // Same reasoning as common-web: types named in bean signatures must be
+    // declared, not inherited by luck from a consuming service.
+    api 'org.springframework:spring-web'
+    api 'org.springframework:spring-context'
+    api 'org.springframework.boot:spring-boot'
+    api 'org.springframework.boot:spring-boot-autoconfigure'
+    api 'org.slf4j:slf4j-api'
+
+    // Boot 4 ships Jackson 3 (tools.jackson.*). Used to rewrite the scan payload.
+    api 'tools.jackson.core:jackson-databind'
+
+    // Supplied at runtime by the embedded container, so compileOnly here.
+    // Tests need it on the classpath because there is no container.
+    compileOnly 'jakarta.servlet:jakarta.servlet-api'
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
