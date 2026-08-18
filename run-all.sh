@@ -21,6 +21,20 @@ INFRA_STARTED=false
 STARTUP_TIMEOUT="${STARTUP_TIMEOUT:-120}"
 PIDS=()
 
+# BootUI developer diagnostics, passed to every service below.
+#
+# read-only=false unblocks the advisor scans and every other action-capable
+# panel; BootUI otherwise refuses them with
+#   BootUI is read-only via bootui.read-only=true
+# mcp.enabled=ON serves each service's MCP endpoint for Claude Code.
+#
+# These are runtime overrides only. The committed application-dev.yml keeps the
+# fail-safe defaults (read-only: true, mcp.enabled: OFF), so nothing here can
+# leak into another entry point - see docs/bootui-development.md. Set either
+# variable to restore the safe value for a run.
+BOOTUI_MCP_ENABLED="${BOOTUI_MCP_ENABLED:-ON}"
+BOOTUI_READ_ONLY="${BOOTUI_READ_ONLY:-false}"
+
 usage() {
   cat <<'EOF'
 Usage: ./run-all.sh [options]
@@ -35,6 +49,9 @@ Options:
 
 Environment:
   STARTUP_TIMEOUT       Seconds to wait for each service (default: 120)
+  BOOTUI_MCP_ENABLED    BootUI MCP endpoint: ON or OFF (default: ON)
+  BOOTUI_READ_ONLY      Block BootUI actions and scans: true or false
+                        (default: false, so the advisor scans can run)
 EOF
 }
 
@@ -173,7 +190,10 @@ for index in "${!SERVICES[@]}"; do
   log_file="$LOG_DIR/$service.log"
 
   : >"$log_file"
-  java -Dspring.profiles.active=dev -jar "$jar" >"$log_file" 2>&1 &
+  java -Dspring.profiles.active=dev \
+       -Dbootui.mcp.enabled="$BOOTUI_MCP_ENABLED" \
+       -Dbootui.read-only="$BOOTUI_READ_ONLY" \
+       -jar "$jar" >"$log_file" 2>&1 &
   PIDS+=("$!")
   echo "  $service (PID $!, port $port, log: $log_file)"
 done
