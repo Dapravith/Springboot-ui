@@ -18,6 +18,7 @@ diagnostics console.
 - [Containerized startup](#containerized-startup)
 - [Service URLs](#service-urls)
 - [API smoke test](#api-smoke-test)
+- [BootUI console](#bootui-console)
 - [Configuration](#configuration)
 - [Development workflow](#development-workflow)
 - [Implementation guidelines](#implementation-guidelines)
@@ -27,6 +28,7 @@ diagnostics console.
 - [Stopping and cleaning](#stopping-and-cleaning)
 - [Troubleshooting](#troubleshooting)
 - [Further documentation](#further-documentation)
+- [Security status](#security-status)
 - [References](#references)
 
 ## System overview
@@ -127,7 +129,8 @@ The script performs these steps:
 2. Starts PostgreSQL, Redis, and Kafka from `compose.yml`.
 3. Waits for the infrastructure health checks.
 4. Runs `./gradlew clean build -Pdev` to compile and test every module.
-5. Starts the five application JARs with the `dev` Spring profile.
+5. Starts the five application JARs with the `dev` Spring profile and the BootUI
+   runtime flags described in [BootUI console](#bootui-console).
 6. Waits for every `/actuator/health` endpoint.
 7. Keeps the services running until you press `Ctrl+C`.
 
@@ -152,11 +155,29 @@ Useful script options:
   Kafka instances are already available.
 - `--stop-infra-on-exit` stops the Compose infrastructure when the script exits.
 
+The script also accepts these environment variables:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `STARTUP_TIMEOUT` | `120` | Seconds to wait for each service to report healthy |
+| `BOOTUI_MCP_ENABLED` | `ON` | Serves each service's BootUI MCP endpoint |
+| `BOOTUI_READ_ONLY` | `false` | `false` unblocks the BootUI advisor scans |
+
 Increase the service startup timeout when working on a slower machine:
 
 ```bash
 STARTUP_TIMEOUT=180 ./run-all.sh
 ```
+
+Restore BootUI's committed fail-safe defaults for a run:
+
+```bash
+BOOTUI_MCP_ENABLED=OFF BOOTUI_READ_ONLY=true ./run-all.sh
+```
+
+These two variables are runtime overrides passed as system properties to the
+service JVMs. They do not change `application-dev.yml`, which keeps
+`read-only: true` and `mcp.enabled: OFF`, so no other entry point inherits them.
 
 ## Gradle commands
 
@@ -286,7 +307,7 @@ docker compose -f compose.yml -f compose.dev.yml down
 
 Business APIs can be called through the gateway on port 8080. Health and BootUI
 URLs belong to the individual services and are intentionally not proxied by the
-gateway.
+gateway. See [BootUI console](#bootui-console) for what each console offers.
 
 Check all health endpoints:
 
@@ -355,6 +376,214 @@ curl http://localhost:8080/api/v1/notifications
 Kafka delivery is asynchronous, so a notification may appear shortly after the
 customer or account request completes.
 
+## BootUI console
+
+Each service embeds its own BootUI console at `/bootui`. There is no central
+instance: a console can only inspect the JVM it runs inside, so open the console
+that belongs to the service you are debugging.
+
+```text
+http://localhost:8080/bootui   api-gateway
+http://localhost:8081/bootui   customer-service
+http://localhost:8082/bootui   account-service
+http://localhost:8083/bootui   transfer-service
+http://localhost:8084/bootui   notification-service
+```
+
+The console header shows which application is being inspected, its Spring Boot
+and Java versions, the active profile, and a `BootUI active` indicator.
+
+### Enabling the panels
+
+| Started with | BootUI attached | Advisor scans | MCP endpoint |
+|---|---|---|---|
+| `./run-all.sh` | Yes | Yes (`bootui.read-only=false`) | Yes (`bootui.mcp.enabled=ON`) |
+| `bootRun -Pdev` | Yes | No — actions refused | No |
+| `bootRun -Pdev` with overrides | Yes | Yes | Yes |
+| Any build without `-Pdev` | No — `/bootui` returns 404 | — | — |
+
+`run-all.sh` relaxes both settings so the console is usable immediately. A plain
+`bootRun -Pdev` keeps the committed fail-safe defaults; add the overrides for a
+single session when you need the scans:
+
+```bash
+./gradlew :account-service:bootRun -Pdev \
+  --args='--bootui.read-only=false --bootui.mcp.enabled=ON'
+```
+
+Turning off read-only unblocks every action-capable panel in that process, not
+only the scans. It is a per-run override — never commit `read-only: false`.
+
+### Panels
+
+The sidebar groups panels into **Advisors** (rule-based scans you trigger) and
+**Runtime** (live views of the process). The counts beside each group reflect
+what the running process actually exposes, so a service's console lists only the
+panels that apply to it.
+
+![The BootUI Pentesting advisor on api-gateway: the Advisors and Runtime sidebar
+groups on the left, and the advisor score, scan status, scope, severity
+breakdown, and findings on the right](docs/images/bootui-pentesting.png)
+
+*The Pentesting advisor on `api-gateway`. Every advisor follows this layout: a
+score, the scan status and scope, a severity breakdown, then the findings with a
+rule id and a recommendation.*
+
+Advisors:
+
+| Panel | What it reports |
+|---|---|
+| Architecture | Curated ArchUnit rules against the service's own classes. Reports rules evaluated, violations, and the base package scanned |
+| REST API | REST design heuristics against the service's own controllers. The gateway analyses 0 controllers because it only routes |
+| Spring | Bounded checks over the running context: renamed or removed Spring Boot 4 properties, bean-wiring problems, configuration smells |
+| Memory | JVM memory, GC, and thread health read from the live management beans, plus a runtime snapshot (heap, live and peak threads, loaded classes, deadlocks) |
+| Pentesting | Local OWASP hygiene checks against the host application only |
+| Vulnerabilities | Runtime JAR inventory scanned against OSV.dev on demand |
+
+<details>
+<summary>Architecture and REST API panels on <code>api-gateway</code></summary>
+
+![The BootUI Architecture advisor: 41 rules evaluated, 0 violations, 3 classes
+analysed in base package com.springboot.gateway](docs/images/bootui-architecture.png)
+
+*Architecture — 41 rules evaluated against the gateway's own classes, no
+violations. The panel states that these heuristics complement rather than
+replace a project-specific ArchUnit suite.*
+
+![The BootUI REST API advisor: 0 rules evaluated and 0 controllers analysed on
+the gateway](docs/images/bootui-rest-api.png)
+
+*REST API — the gateway declares no controllers, so no rules are evaluated. On
+`customer-service` or `account-service` this panel has controllers to analyse.*
+
+</details>
+
+Runtime: Health, HTTP Sessions, Metrics, Live Memory, JVM Tuning, Heap Dump,
+Threads, GraalVM, and CRaC. These are live views and need no scan.
+
+Every advisor states in the panel that its findings are **review prompts, not
+verdicts**. Validate a finding against the code before acting on it, and treat
+the heuristic rules as a complement to — not a replacement for — the project's
+own ArchUnit suite, API review, and security review.
+
+### Overview
+
+The Overview page scores the app across the advisors and lets you run them all
+with **Re-run all scanners**. Each card shows a per-advisor score, the severity
+counts behind it, and its contribution to the overall score. The overall score
+reports how many scanners it could include (for example "6 of 7 scanners
+scored"); a scanner that failed to return a severity summary is excluded rather
+than counted as zero.
+
+![The BootUI Overview page: an overall score of 96 out of 100, per-scanner
+contributions, and a card per advisor showing its score and severity
+counts](docs/images/bootui-overview.png)
+
+*Overview on `api-gateway`. The Vulnerabilities card here shows the failure mode
+described in [Troubleshooting](#overview-reports-unable-to-run-vulnerabilities):
+the scanner returned no severity summary, so only 6 of 7 scanners were scored.*
+
+Findings this project currently reports:
+
+- **Spring** — `SPRING-CONFIG-003`: BootUI reports that Spring Boot 4 renamed
+  `spring.http.client.connect-timeout` and `spring.http.client.read-timeout` to
+  `spring.http.clients.*`, so the keys no longer take effect. `api-gateway`,
+  `transfer-service`, and `account-service` all still set the old names, which
+  means their outbound HTTP timeouts are not being applied. Also
+  `SPRING-WIRING-009`, a public mutable field on a singleton bean.
+- **Memory** — `MEM-FOOTPRINT-004`, high host swap usage while the JVM's
+  committed footprint exceeds free physical memory; and `MEM-GC-005`, a G1 Full
+  GC between two scans. Both are host-condition findings rather than defects.
+- **Pentesting** — actuator mappings reachable without a Spring Security filter
+  chain. See [Security status](#security-status): this project has no
+  authentication layer, so these findings are expected until one is added.
+
+![The BootUI Spring advisor: 41 rules evaluated across 571 beans, with the
+SPRING-CONFIG-003 and SPRING-WIRING-009 violations
+expanded](docs/images/bootui-spring.png)
+
+*Spring — each violation carries a rule id, a category, sample details, and a
+recommendation, and can be dismissed for the session.*
+
+![The BootUI Memory advisor: a runtime snapshot of heap, threads, loaded classes
+and deadlock state, with the MEM-FOOTPRINT-004 and MEM-GC-005
+findings](docs/images/bootui-memory.png)
+
+*Memory — the runtime snapshot on the right is read live from the management
+beans, so it reflects the machine as well as the JVM.*
+
+### Live Activity
+
+Live Activity is the panel to keep open while exercising the APIs. It shows
+requests per minute, error rate, latency p50/p95, SQL per minute, the slowest
+endpoint, active exceptions, heap used, cache hit ratio, and scheduled failures,
+above a filterable event stream of requests, SQL statements, and exceptions.
+Auto-refresh can be paused, and events can be filtered by path, status, type, or
+severity.
+
+![The BootUI Live Activity panel: metric tiles for requests per minute, error
+rate, latency, SQL per minute and heap, above a time-ordered event table of
+requests and exceptions](docs/images/bootui-live-activity.png)
+
+*Live Activity. The expanded row shows an exception with its stack frame and an
+occurrence count, tied to the request that produced it.*
+
+Events are held in memory by default, so they are lost when the service
+restarts; the panel offers a database-backed store if you need them to survive a
+restart.
+
+### Vulnerabilities
+
+**Scan with OSV.dev** sends the package names and versions of the runtime JARs
+to `osv.dev` and lists each dependency with its advisories, severity, EPSS
+score, and fixed versions. Nothing is sent until you click it. On a recent run
+it inventoried 27 runtime dependencies and flagged two MEDIUM advisories
+(`log4j-api` and `jackson-databind`) — re-run the scan rather than trusting that
+snapshot.
+
+![The BootUI Vulnerabilities panel: scan status, dependency and vulnerable
+counts, a severity breakdown, and the runtime JAR table with advisories and
+fixed versions](docs/images/bootui-vulnerabilities.png)
+
+*Vulnerabilities. Each row links the advisory and shows the versions that fix
+it; the table can be filtered to vulnerable dependencies only.*
+
+This and the GitHub panel are the only parts of BootUI that leave the machine.
+
+### GitHub
+
+The GitHub panel reads the local repository's origin and shows repository
+metrics, open pull requests and issues, workflow failures, API quota, and
+Dependabot, code-scanning, and secret-scanning alerts. It refreshes about once a
+minute while visible.
+
+It authenticates with `GITHUB_TOKEN`, `GH_TOKEN`, or an existing `gh auth token`.
+The token is used server-side and is never sent to the browser. Panels that the
+token's scopes or the repository plan do not cover render as `Unavailable`
+rather than failing the page — code scanning on a repository without it returns
+HTTP 404, for example.
+
+![The BootUI GitHub panel: repository identity and credential status, with cards
+for open pull requests, issues, workflow failures, API quota, and the scanning
+alert types](docs/images/bootui-github.png)
+
+*GitHub. The credential card confirms which token source was used and the scopes
+it carries, which is what determines whether the cards below can populate.*
+
+### MCP access for Claude Code
+
+With `bootui.mcp.enabled=ON`, each service serves an MCP endpoint at
+`http://127.0.0.1:<port>/bootui/api/mcp`, which lets Claude Code query the
+running application directly instead of you reading panels by hand. Copy
+`.mcp.json.example` to `.mcp.json` and keep only the services you are debugging;
+`.mcp.json` is gitignored.
+
+Each service is a separate MCP server on its own port — there is no aggregated
+endpoint. Loopback clients need no token, so never put credentials in that file.
+
+`docs/bootui-development.md` covers the tool list, the advisor-scan exception,
+Docker behaviour, and the production restrictions in full.
+
 ## Configuration
 
 Configuration is stored in each service under `src/main/resources`:
@@ -378,6 +607,7 @@ Important environment overrides:
 | `TRANSFER_SERVICE_URL` | Gateway | `http://localhost:8083` |
 | `NOTIFICATION_SERVICE_URL` | Gateway | `http://localhost:8084` |
 | `AUDIT_ENABLED` | All services | `true` |
+| `GITHUB_TOKEN` or `GH_TOKEN` | BootUI GitHub panel | Falls back to `gh auth token` |
 
 Override a value for one run without editing committed configuration:
 
@@ -404,7 +634,8 @@ Use this sequence for normal feature work:
 3. Implement the smallest complete change through the required architecture
    layers.
 4. Run the affected service with `bootRun -Pdev`.
-5. Exercise the endpoint through the gateway and inspect the service's BootUI.
+5. Exercise the endpoint through the gateway and watch the service's BootUI
+   [Live Activity](#live-activity) panel.
 6. Run `./gradlew test` to catch cross-module regressions.
 7. Run `./gradlew clean build` before producing a production artifact.
 
@@ -723,11 +954,40 @@ Then rebuild and run the service with `-Pdev`.
 Use `localhost` or `127.0.0.1`. BootUI intentionally rejects non-loopback
 clients by default.
 
-### BootUI reports read-only mode
+### A BootUI panel or scan returns "BootUI is read-only"
 
-This is the expected safe default. See `docs/bootui-development.md` before
-temporarily enabling an action-capable feature. Do not commit
-`bootui.read-only=false`.
+Expected when the service was started with `bootRun -Pdev`, which keeps the
+committed default `bootui.read-only: true`. Add the override for that run:
+
+```bash
+./gradlew :account-service:bootRun -Pdev \
+  --args='--bootui.read-only=false'
+```
+
+`run-all.sh` already sets it. Do not commit `bootui.read-only=false`; see
+`docs/bootui-development.md` for the rationale.
+
+### Overview reports "Unable to run Vulnerabilities"
+
+The Overview aggregate could not score that scanner, which is why it reports
+scoring fewer scanners than it lists. Open the Vulnerabilities panel and run
+**Scan with OSV.dev** directly — the panel reports the dependency inventory and
+advisories even when the aggregate card cannot summarise them.
+
+### Live Activity shows 404s for `__bootui_pentesting__`
+
+These are BootUI's own synthetic probe requests from the Pentesting advisor, not
+a broken route. The advisor sends one localhost request against an application
+path to test error handling; the resulting 404 and `NoResourceFoundException`
+are the expected outcome.
+
+### The GitHub panel shows "Unavailable"
+
+No token was found, or the token's scopes and the repository's plan do not cover
+that metric. Export `GITHUB_TOKEN`/`GH_TOKEN` or sign in with `gh auth login`,
+then restart the service. Code scanning returns HTTP 404 on repositories that do
+not have it enabled, which the panel reports as unavailable rather than as an
+error.
 
 ### Gradle cannot find Java 25
 
@@ -763,4 +1023,11 @@ There is no Spring Security configuration in this project. Business endpoints
 and exposed actuator endpoints are unauthenticated. Keep all ports bound to
 localhost, never route BootUI through an ingress or public gateway, never commit
 credentials, and do not deploy this system beyond a developer machine until an
-authentication and authorization design has been implemented.
+authentication and authorization design has been implemented. BootUI's
+Pentesting advisor reports this gap, and its findings there are correct.
+
+Two BootUI panels reach outside the machine, both only in developer mode:
+Vulnerabilities sends dependency names and versions to OSV.dev when you click
+**Scan with OSV.dev**, and the GitHub panel calls the GitHub API with a
+server-side token. Neither runs in a production build, because BootUI is not on
+a production classpath at all.
