@@ -53,8 +53,8 @@ public class CustomerController {
         return ApiResponse.ok(CustomerResponse.from(customer));
     }
 
-    @PostMapping(consumes = "application/json")
-    public ResponseEntity<ApiResponse<CustomerResponse>> register(
+    @PostMapping(consumes = "application/json", path = "/register")
+    public ResponseEntity<ApiResponse<CustomerResponse>> registerCustomer(
             @Valid @RequestBody RegisterCustomerRequest request) {
         Customer registered = registerCustomer.register(
                 new RegisterCustomerUseCase.RegisterCustomerCommand(request.fullName(), request.email()));
