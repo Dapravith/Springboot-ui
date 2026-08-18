@@ -8,6 +8,9 @@ logs/
 .vscode/
 .DS_Store
 
+# Local Claude Code state: machine-specific permissions and scratch worktrees.
+.claude/
+
 # Local MCP wiring may reference machine-specific ports/paths.
 # Commit .mcp.json.example instead.
 .mcp.json
