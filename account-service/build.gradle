@@ -19,7 +19,8 @@ dependencies {
     implementation 'tools.jackson.core:jackson-databind'
 
     // Schema is owned by migrations; Hibernate only validates against it.
-    implementation 'org.flywaydb:flyway-core'
+    // See customer-service: Boot 4 requires the starter for Flyway auto-configuration.
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
 

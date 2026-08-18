@@ -24,7 +24,10 @@ dependencies {
     implementation 'tools.jackson.core:jackson-databind'
 
     // Schema is owned by migrations; Hibernate only validates against it.
-    implementation 'org.flywaydb:flyway-core'
+    // As with Kafka above, Boot 4 splits Flyway auto-configuration into its own
+    // module. org.flywaydb:flyway-core alone gives the library WITHOUT the
+    // auto-configuration, so spring.flyway.* is ignored and no migration runs.
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
     runtimeOnly 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
 
